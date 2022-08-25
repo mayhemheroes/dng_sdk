@@ -1,0 +1,4 @@
+project: PROJECT
+target: dng_camera_profile_fuzzer
+cmds:
+- cmd: /out/dng_camera_profile_fuzzer
