@@ -50,6 +50,7 @@ cc_defaults {
         "-DqDNGUseXMP=1", // not actually optional anymore :/
         "-DqDNGValidateTarget=1",
         "-DqDNGUsingSanitizer=1",
+        "-DqUltraHighResolution=1",
         "-Werror",
         "-Wsign-compare",
         "-Wno-reorder",
