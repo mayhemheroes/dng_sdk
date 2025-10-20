@@ -39,7 +39,11 @@ dng_filter_task::dng_filter_task (const char *name,
 	,	fSrcTileSize  (0, 0)
 	
 	{
-
+// BEGIN GOOGLE MODIFICATION
+#ifdef qUltraHighResolution
+		fMaxTileSize = dng_point(2048, 2048);
+#endif
+// END GOOGLE MODIFICATION
 	}
 							  
 /*****************************************************************************/
