@@ -284,6 +284,16 @@ void dng_area_task::ProcessOnThread (uint32 threadIndex,
 
 	}
 
+void dng_area_task::ProcessOnThread (uint32 threadIndex,
+									 const dng_rect &area,
+									 const dng_point &tileSize,
+									 dng_abort_sniffer *sniffer)
+	{
+	
+	ProcessOnThread (threadIndex, area, tileSize, sniffer, nullptr);
+	
+	}
+
 /*****************************************************************************/
 
 dng_base_tile_iterator * dng_area_task::MakeTileIterator (uint32 /* threadIndex */,
