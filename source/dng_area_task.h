@@ -234,6 +234,12 @@ class dng_area_task
 							  dng_abort_sniffer *sniffer,
 							  dng_area_task_progress *progress);
 
+		/// Provide backwards compatibility with old blobs.
+		void ProcessOnThread (uint32 threadIndex,
+							  const dng_rect &area,
+							  const dng_point &tileSize,
+							  dng_abort_sniffer *sniffer);
+
 		/// Factory method to make a tile iterator. This iterator will be used
 		/// by a thread to process tiles in an area in a specific order. The
 		/// default implementation uses a forward iterator that visits tiles
