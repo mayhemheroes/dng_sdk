@@ -167,6 +167,7 @@ cc_library {
     host_supported: true,
     sdk_version: "current",
     defaults: ["libdng_sdk-defaults"],
+    vendor_available: true,
 
     cflags: ["-DqDNGValidate=0"],
 
