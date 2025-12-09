@@ -21,7 +21,7 @@
 #include "dng_uncopyable.h"
 
 #include <atomic>
-#include <inttypes.h>
+#include <cinttypes>
 
 /*****************************************************************************/
 
@@ -350,10 +350,10 @@ dng_fingerprint dng_lossy_compressed_image::FindDigest (dng_host &host) const
 		 for (int32 i = ra.fBegin; i < ra.fEnd; i++)
 			 {
 				 
-			 dng_md5_printer printer;
+			 dng_md5_direct_printer printer;
 				
-			 printer.Process (fData [i]->Buffer	     (),
-							  fData [i]->LogicalSize ());
+			 printer.ProcessPtr (fData [i]->Buffer		(),
+								 fData [i]->LogicalSize ());
 								 
 			 digests [i] = printer.Result ();
 				 
@@ -369,11 +369,10 @@ dng_fingerprint dng_lossy_compressed_image::FindDigest (dng_host &host) const
 	
 		{
 		
-		dng_md5_printer printer;
+		dng_md5_direct_printer printer;
 		
 		for (const auto &digest : digests)
-			printer.Process (digest.data,
-							 uint32 (sizeof (digest.data)));
+			printer.Process (digest);
 			
 		return printer.Result ();
 		
@@ -486,10 +485,10 @@ void dng_jpeg_image::DoFindDigest (dng_host & /* host */,
 	if (fJPEGTables.Get ())
 		{
 		
-		dng_md5_printer printer;
+		dng_md5_direct_printer printer;
 		
-		printer.Process (fJPEGTables->Buffer	  (),
-						 fJPEGTables->LogicalSize ());
+		printer.ProcessPtr (fJPEGTables->Buffer		 (),
+							fJPEGTables->LogicalSize ());
 						 
 		digests.push_back (printer.Result ());
 		
