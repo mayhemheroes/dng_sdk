@@ -562,6 +562,7 @@ class dng_range_parallel_func_task: public dng_range_parallel_task
 			r.fBegin	   = startIndex;
 			r.fEnd		   = stopIndex;
 			r.fSniffer	   = sniffer;
+			r.fAllocator   = &fHost.Allocator ();
 
 			fFunc (r);
 

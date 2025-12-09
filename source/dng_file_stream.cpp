@@ -120,11 +120,9 @@ dng_file_stream::dng_file_stream (int fd,
 								  bool output,
 								  uint32 bufferSize)
 
-	:	dng_stream ((dng_abort_sniffer *) NULL,
-					bufferSize,
-					0)
-
-	,	fFile (NULL)
+	:	dng_file_stream (fd,
+						 output ? "wb" : "rb",
+						 bufferSize)
 
 	{
 
