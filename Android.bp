@@ -70,6 +70,10 @@ cc_defaults {
     rtti: true,
     cppflags: ["-fexceptions"],
 
+    // The external repos needs to fix unique_ptr issues for C++23 so pin it to C++20 for now
+    // until the SDK gets updated with fixes for it.
+    cpp_std: "c++20",
+
     sanitize: {
         misc_undefined: [
             "unsigned-integer-overflow",
