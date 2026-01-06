@@ -167,7 +167,7 @@ static void SpoolAdobeData (dng_stream &stream,
 			
 			stream.Put_uint32 (16);
 			
-			stream.Put (iptcDigest.data, 16);
+			stream.Put (iptcDigest);
 			
 			}
 			
@@ -399,8 +399,8 @@ void tag_data_ptr::Put (dng_stream &stream) const
 				
 				}
 			
-			// Entries don't need to be byte swapped.  Fall through
-			// to non-byte swapped case.
+			// Entries don't need to be byte swapped.
+			// Default to non-byte swapped case.
 				
 			default:
 				{
@@ -1546,7 +1546,7 @@ exif_tag_set::exif_tag_set (dng_tiff_directory &directory,
 			snprintf (fImageUniqueIDData + j * 2,
 					  33,
 					  "%02X",
-					  (unsigned) exif.fImageUniqueID.data [j]);
+					  (unsigned) exif.fImageUniqueID.Data () [j]);
 					 
 			}
 		
@@ -2524,11 +2524,18 @@ class profile_tag_set
 
 		AutoPtr<tag_owned_data_ptr> fRGBTablesTag;
 
+		bool fProfileDidWritePGTM = false;
+
 	public:
 	
 		profile_tag_set (dng_host &host,
 						 dng_tiff_directory &directory,
 						 const dng_camera_profile &profile);
+
+		bool ProfileDidWritePGTMToMainIFD () const
+			{
+			return fProfileDidWritePGTM;
+			}
 		
 	};
 	
@@ -3027,6 +3034,8 @@ profile_tag_set::profile_tag_set (dng_host &host,
 
 			directory.Add (fProfileGainTableMapTag.Get ());
 
+			fProfileDidWritePGTM = true;
+
 			}
 
 		// ProfileDynamicRange.
@@ -3315,7 +3324,7 @@ void big_table_tag_set::WriteData (dng_stream &stream)
 			const dng_fingerprint &fingerprint = it->first;
 			
 			memcpy (fDigestsBuffer->Buffer_uint8 () + index * 16,
-					fingerprint.data,
+					fingerprint.Data (),
 					16);
 			
 			const dng_ref_counted_block &block = it->second;
@@ -3342,8 +3351,8 @@ void big_table_tag_set::WriteData (dng_stream &stream)
 			for (const auto &group : fGroupIndex.Map ())			
 				{
 				
-				memcpy (dPtr	 , group.first .data, 16);
-				memcpy (dPtr + 16, group.second.data, 16);
+				memcpy (dPtr	 , group.first .Data (), 16);
+				memcpy (dPtr + 16, group.second.Data (), 16);
 
 				dPtr += 32;
 				
@@ -5142,7 +5151,7 @@ void dng_write_tiles_task::Process (uint32 /* threadIndex */,
 				
 				tileStream.SetReadPosition (0);
 				
-				dng_md5_printer_stream md5stream;
+				dng_md5_printer_le_stream md5stream;
 				
 				tileStream.CopyToStream (md5stream, tileByteCount);
 				
@@ -5188,8 +5197,7 @@ void dng_write_tiles_task::Process (uint32 /* threadIndex */,
 			if (fNeedDigest)
 				{
 				
-				fOverallPrinter.Process (tileDigest.data,
-										 uint32 (sizeof (tileDigest.data)));
+				fOverallPrinter.Process (tileDigest);
 
 				}
 
@@ -5550,7 +5558,7 @@ void dng_image_writer::WriteImage (dng_host &host,
 			subTileBlockBuffer.Reset (host.Allocate (uncompressedSize.Get ()));
 			}
 
-		dng_md5_printer overallPrinter;
+		dng_md5_direct_printer overallPrinter;
 
 		const bool needDigest = (outDigest != nullptr);
 				
@@ -5628,7 +5636,7 @@ void dng_image_writer::WriteImage (dng_host &host,
 
 					tileStream.SetReadPosition (0);
 					
-					dng_md5_printer_stream md5stream;
+					dng_md5_printer_le_stream md5stream;
 					
 					tileStream.CopyToStream (md5stream, tileByteCount);
 					
@@ -5636,8 +5644,7 @@ void dng_image_writer::WriteImage (dng_host &host,
 
 					// Update the overall digest.
 
-					overallPrinter.Process (tileDigest.data,
-											uint32 (sizeof (tileDigest.data)));
+					overallPrinter.Process (tileDigest);
 
 					// Copy the tile data to the main stream.
 					
@@ -6481,7 +6488,6 @@ void dng_image_writer::CleanUpMetadata (dng_host &host,
 	#endif	// qDNGUseXMP
 
 	}
-	
 
 /*****************************************************************************/
 
@@ -6547,7 +6553,10 @@ void dng_image_writer::WriteTIFF (dng_host &host,
 								  bool hasTransparency,
 								  bool allowBigTIFF,
 								  const dng_image *gainMapImage,
-								  const bool useHalfFloat)
+								  const const_dng_memory_block_sptr gainMapMetadataBlock,
+								  const bool useHalfFloat,
+								  const void *gainMapAltProfileData,
+								  const uint32 gainMapAltProfileSize)
 	{
 	
 	const void *profileData = NULL;
@@ -6579,7 +6588,10 @@ void dng_image_writer::WriteTIFF (dng_host &host,
 						  hasTransparency,
 						  allowBigTIFF,
 						  gainMapImage,
-						  useHalfFloat);
+						  gainMapMetadataBlock,
+						  useHalfFloat,
+						  gainMapAltProfileData,
+						  gainMapAltProfileSize);
 	
 	}
 
@@ -6711,7 +6723,10 @@ void dng_image_writer::WriteTIFFWithProfile (dng_host &host,
 											 bool hasTransparency,
 											 bool allowBigTIFF,
 											 const dng_image *gainMapImage,
-											 const bool useHalfFloat)
+											 const const_dng_memory_block_sptr gainMapMetadataBlock,
+											 const bool useHalfFloat,
+											 const void *gainMapAltProfileData,
+											 const uint32 gainMapAltProfileSize)
 	{
 	
 	// Force writing all TIFF files in BigTIFF format.
@@ -6869,7 +6884,12 @@ void dng_image_writer::WriteTIFFWithProfile (dng_host &host,
 	
 	AutoPtr<dng_ifd> gainMapImageIFD;
 
-	const bool hasGainMap = (gainMapImage != nullptr);
+	AutoPtr<tag_owned_data_ptr> tagGainMapMetadata;
+
+	AutoPtr<tag_icc_profile> tagGainMapAlternateProfile;
+
+	const bool hasGainMap = ((gainMapImage != nullptr) &&
+							 (gainMapMetadataBlock != nullptr));
 
 	if (hasGainMap)
 		{
@@ -6888,6 +6908,26 @@ void dng_image_writer::WriteTIFFWithProfile (dng_host &host,
 
 		gainMapTagSet.Reset (new dng_basic_tag_set (gainMapIFD,
 													*gainMapImageIFD));
+		
+		tagGainMapMetadata.Reset
+			(new tag_owned_data_ptr (tcGainMapMetadata_ISO_21496_1,
+									 ttUndefined,
+									 gainMapMetadataBlock->LogicalSize (),
+									 gainMapMetadataBlock));
+		
+		gainMapIFD.Add (tagGainMapMetadata.Get ());
+
+		if (gainMapAltProfileData &&
+			(gainMapAltProfileSize > 0))
+			{
+			
+			tagGainMapAlternateProfile.Reset
+				(new tag_icc_profile (gainMapAltProfileData,
+									  gainMapAltProfileSize));
+
+			gainMapIFD.Add (tagGainMapAlternateProfile.Get ());
+			
+			}
 		
 		}
 
@@ -7055,7 +7095,7 @@ void dng_image_writer::WriteTIFFWithProfile (dng_host &host,
 
 	// Write the gain map image.
 
-	if (gainMapImage)
+	if (hasGainMap)
 		{
 		
 		WriteImage (host,
@@ -7170,7 +7210,10 @@ void dng_image_writer::WriteDNG (dng_host &host,
 								 bool uncompressed,
 								 bool allowBigTIFF,
 								 const dng_image *gainMapImage,
-								 const dng_lossy_compressed_image *gainMapLossyCompressed)
+								 const dng_lossy_compressed_image *gainMapLossyCompressed,
+								 const const_dng_memory_block_sptr gainMapMetadataBlock,
+								 const void *gainMapAltProfileData,
+								 const uint32 gainMapAltProfileSize)
 	{
 	
 	WriteDNGWithMetadata (host,
@@ -7182,7 +7225,10 @@ void dng_image_writer::WriteDNG (dng_host &host,
 						  uncompressed,
 						  allowBigTIFF,
 						  gainMapImage,
-						  gainMapLossyCompressed);
+						  gainMapLossyCompressed,
+						  gainMapMetadataBlock,
+						  gainMapAltProfileData,
+						  gainMapAltProfileSize);
 	
 	}
 	
@@ -7380,7 +7426,10 @@ void dng_image_writer::WriteDNGWithMetadata (dng_host &host,
 											 const bool uncompressed,
 											 bool allowBigTIFF,
 											 const dng_image *gainMapImage,
-											 const dng_lossy_compressed_image *gainMapLossyCompressed)
+											 const dng_lossy_compressed_image *gainMapLossyCompressed,
+											 const const_dng_memory_block_sptr gainMapMetadataBlock,
+											 const void *gainMapAltProfileData,
+											 const uint32 gainMapAltProfileSize)
 	{
 	
 	// Force writing all DNG files in 64-bit format.
@@ -7583,6 +7632,8 @@ void dng_image_writer::WriteDNGWithMetadata (dng_host &host,
 
 	bool hasProfileWith_1_6_Features = false;
 	bool hasProfileWith_1_7_Features = false;
+
+	bool mainProfileDidWritePGTMtoMainIFD = false;
 		
 	// Create the main IFD.
 										 
@@ -7606,6 +7657,9 @@ void dng_image_writer::WriteDNGWithMetadata (dng_host &host,
 		profileSet.Reset (new profile_tag_set (host,
 											   mainIFD,
 											   mainProfile));
+
+		mainProfileDidWritePGTMtoMainIFD =
+			profileSet->ProfileDidWritePGTMToMainIFD ();
 		
 		colorSet.Reset (new color_tag_set (mainIFD,
 										   negative));
@@ -7677,6 +7731,10 @@ void dng_image_writer::WriteDNGWithMetadata (dng_host &host,
 	
 	AutoPtr<dng_ifd> gainMapImageIFD;
 
+	AutoPtr<tag_owned_data_ptr> tagGainMapMetadata;
+
+	AutoPtr<tag_icc_profile> tagGainMapAlternateProfile;
+
 	const bool hasGainMap = (gainMapImage != nullptr);
 
 	if (hasGainMap)
@@ -7692,6 +7750,31 @@ void dng_image_writer::WriteDNGWithMetadata (dng_host &host,
 
 		gainMapTagSet.Reset (new dng_basic_tag_set (gainMapIFD,
 													*gainMapImageIFD));
+
+		if (gainMapMetadataBlock)
+			{
+		
+			tagGainMapMetadata.Reset
+				(new tag_owned_data_ptr (tcGainMapMetadata_ISO_21496_1,
+										 ttUndefined,
+										 gainMapMetadataBlock->LogicalSize (),
+										 gainMapMetadataBlock));
+
+			gainMapIFD.Add (tagGainMapMetadata.Get ());
+
+			if (gainMapAltProfileData &&
+				(gainMapAltProfileSize > 0))
+				{
+
+				tagGainMapAlternateProfile.Reset
+					(new tag_icc_profile (gainMapAltProfileData,
+										  gainMapAltProfileSize));
+
+				gainMapIFD.Add (tagGainMapAlternateProfile.Get ());
+
+				}
+
+			}
 		
 		}
 		
@@ -8516,7 +8599,7 @@ void dng_image_writer::WriteDNGWithMetadata (dng_host &host,
 		}
 	
 	tag_uint8_ptr tagRawImageDigest (useNewDigest ? tcNewRawImageDigest : tcRawImageDigest,
-									 mainImageRawImageDigest.data,
+									 mainImageRawImageDigest.Data (),
 									 16);
 									 
 	if (mainImageRawImageDigest.IsValid ())
@@ -8533,7 +8616,7 @@ void dng_image_writer::WriteDNGWithMetadata (dng_host &host,
 	const auto rawDataUniqueID = negative.RawDataUniqueID ();
 	
 	tag_uint8_ptr tagRawDataUniqueID (tcRawDataUniqueID,
-									  rawDataUniqueID.data,
+									  rawDataUniqueID.Data (),
 									  16);
 									  
 	if (rawDataUniqueID.IsValid ())
@@ -8562,7 +8645,7 @@ void dng_image_writer::WriteDNGWithMetadata (dng_host &host,
 										 negative.OriginalRawFileData		());
 										 
 	tag_uint8_ptr tagOriginalRawFileDigest (tcOriginalRawFileDigest,
-											negative.OriginalRawFileDigest ().data,
+											negative.OriginalRawFileDigest ().Data (),
 											16);
 										 
 	if (negative.OriginalRawFileData ())
@@ -8717,12 +8800,10 @@ void dng_image_writer::WriteDNGWithMetadata (dng_host &host,
 	
 	if (negative.HasProfileGainTableMap () &&
 
-		// If the main profile already has the PGTM attached, let the profile
-		// logic take care of writing the PGTM. Otherwise we would end up
-		// writing two identical PGTM tags into IFD 0.
-		
-		(negative.ShareProfileGainTableMap () !=
-		 mainProfile.ShareProfileGainTableMap ()))
+		// If the main profile already wrote the PGTM attached, then
+		// ignore whatever PGTM is attached to the negative.
+
+		!mainProfileDidWritePGTMtoMainIFD)
 		{
 
 		dng_memory_stream tempStream (host.Allocator (),
