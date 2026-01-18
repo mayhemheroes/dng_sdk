@@ -2868,8 +2868,10 @@ void RefMapArea16 (uint16 *dPtr,
 				
 				count -= blocks << 4;
 				d2	  += blocks << 4;
-				
-				while (blocks--)
+
+// BEGIN GOOGLE MODIFICATION
+				for (; blocks > 0; blocks--)
+// END GOOGLE MODIFICATION
 					{
 				
 					uint32 x0, x1, x2, x3, x4, x5, x6, x7;
