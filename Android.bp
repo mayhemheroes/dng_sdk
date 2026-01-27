@@ -101,57 +101,11 @@ cc_defaults {
             ],
         },
     },
-}
 
-cc_library {
-    name: "libdng_sdk",
-    host_supported: true,
     sdk_version: "current",
-    defaults: ["libdng_sdk-defaults"],
-
-    sanitize: {
-        // For now we want to disable the ubsan_minimal runtime so that we can
-        // inject our own that converts ubsan errors into C++ exceptions.
-        // Soong doesn't have a flag for that specifically, but setting
-        // 'never' in combination with `-fsanitize=` cflags works for
-        never: true,
-    },
-
-    cflags: [
-        "-DqDNGValidate=0",
-        "-fsanitize=signed-integer-overflow,unsigned-integer-overflow",
-        "-fno-sanitize-link-runtime",
-    ],
-
-    shared_libs: [
-        "libz",
-        "libjpeg",
-        "libexpat",
-    ],
-
-    shared: {
-        shared_libs: [
-            "libjxl",
-        ],
-        export_shared_lib_headers: [
-            "libjxl",
-        ],
-    },
-
-    static: {
-        whole_static_libs: [
-            "libjxl",
-            "libexpat"
-        ],
-        export_static_lib_headers: [
-            "libjxl",
-        ],
-    },
-
-    whole_static_libs: [
-        "xmp_toolkit_sdk",
-    ],
-
+    stl: "c++_shared",
+    whole_static_libs: ["xmp_toolkit_sdk"],
+    export_include_dirs: ["source"],
     srcs: [
         "source/dng_1d_function.cpp",
         "source/dng_1d_table.cpp",
@@ -224,9 +178,56 @@ cc_library {
         "source/dng_xmp.cpp",
         "source/dng_xmp_sdk.cpp",
         "source/dng_xy_coord.cpp",
-
-        "ubsan-replacement/ubsan_throwing_runtime.cpp"
     ],
+}
+
+cc_library {
+    name: "libdng_sdk",
+    host_supported: true,
+    defaults: ["libdng_sdk-defaults"],
+
+    sanitize: {
+        // For now we want to disable the ubsan_minimal runtime so that we can
+        // inject our own that converts ubsan errors into C++ exceptions.
+        // Soong doesn't have a flag for that specifically, but setting
+        // 'never' in combination with `-fsanitize=` cflags works for
+        never: true,
+    },
+
+    cflags: [
+        "-DqDNGValidate=0",
+        "-fsanitize=signed-integer-overflow,unsigned-integer-overflow",
+        "-fno-sanitize-link-runtime",
+    ],
+
+    srcs: [
+        "ubsan-replacement/ubsan_throwing_runtime.cpp",
+    ],
+
+    shared_libs: [
+        "libz",
+        "libjpeg",
+        "libexpat",
+    ],
+
+    shared: {
+        shared_libs: [
+            "libjxl",
+        ],
+        export_shared_lib_headers: [
+            "libjxl",
+        ],
+    },
+
+    static: {
+        whole_static_libs: [
+            "libjxl",
+            "libexpat",
+        ],
+        export_static_lib_headers: [
+            "libjxl",
+        ],
+    },
 
     target: {
         host_linux: {
@@ -238,10 +239,6 @@ cc_library {
             ],
         },
     },
-
-    stl: "c++_shared",
-
-    export_include_dirs: ["source"],
 }
 
 // dng sdk validating version static library
@@ -257,19 +254,19 @@ cc_library_static {
 
     static_libs: [
         "libjpeg_static_ndk",
+    ],
+
+    whole_static_libs: [
+        "libexpat",
         "libjxl",
     ],
 
-    shared_libs: ["libz"],
-
-    whole_static_libs: [
-        "libdng_sdk",
+    export_static_lib_headers: [
+        "libjxl",
+        "libexpat",
     ],
 
-    export_include_dirs: ["source"],
-
-    sdk_version: "current",
-    stl: "c++_shared",
+    shared_libs: ["libz"],
 }
 
 // dng sdk unittests for target
