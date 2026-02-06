@@ -21,6 +21,10 @@ cc_fuzz {
         "-Wno-unused-parameter",
         "-fexceptions",
     ],
+    //TODO: b/481139343 - Temporary workaround, will be reverted once a viable fix is found.
+    sanitize: {
+        hwaddress: false,
+    },
     static_libs: [
         "libdng_sdk",
         "libexpat",
