@@ -1,0 +1,13 @@
+# Keep the FULL repo (incl. .git — the grader uses it); drop only local build cruft.
+.mayhem-build/
+build/
+out/
+*.o
+*.a
+*.so
+*.dylib
+**/__pycache__/
+
+.DS_Store
+*.swp
+*~

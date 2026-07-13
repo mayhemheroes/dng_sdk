@@ -1,0 +1,8 @@
+project: dng_sdk
+target: dng_camera_profile_fuzzer
+testsuite:
+  - https://$MAYHEM_DOMAIN/$MAYHEM_PROJECT/$MAYHEM_TARGET/testsuite.tar
+  - file://mayhem/dng_camera_profile_fuzzer/testsuite
+cmds:
+  - cmd: /mayhem/dng_camera_profile_fuzzer
+    libfuzzer: true
